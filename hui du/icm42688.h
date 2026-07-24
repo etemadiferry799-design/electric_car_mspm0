@@ -33,6 +33,11 @@ enum {
 };
 
 uint8_t ICM_Init(void);
+uint8_t ICM_ReadWhoAmI(uint8_t ad0High);
+uint8_t ICM_ReadSdaLevel(void);
+uint8_t ICM_ReadSclLevel(void);
+uint8_t ICM_ReadCsLevel(void);
+uint8_t ICM_ReadAd0Level(void);
 void    ICM_ReadAccel(int16_t *ax, int16_t *ay, int16_t *az);
 void    ICM_ReadGyro(int16_t *gx, int16_t *gy, int16_t *gz);
 
