@@ -114,6 +114,34 @@ static void ReadMulti(uint8_t reg, uint8_t *buf, uint8_t len)
 }
 
 // ==================== API ====================
+uint8_t ICM_ReadWhoAmI(uint8_t ad0High)
+{
+    ICM_PreparePins(ad0High);
+    delay_ms(2);
+    return ReadRegAt(ad0High ? 0x69 : 0x68, ICM_WHO_AM_I);
+}
+
+uint8_t ICM_ReadSdaLevel(void)
+{
+    SDA_In();
+    delay_ms(1);
+    return SDA_R();
+}
+
+uint8_t ICM_ReadSclLevel(void)
+{
+    return DL_GPIO_readPins(SCL_PORT, SCL_PIN) ? 1 : 0;
+}
+
+uint8_t ICM_ReadCsLevel(void)
+{
+    return DL_GPIO_readPins(CS_PORT, CS_PIN) ? 1 : 0;
+}
+
+uint8_t ICM_ReadAd0Level(void)
+{
+    return DL_GPIO_readPins(AD0_PORT, AD0_PIN) ? 1 : 0;
+}
 uint8_t ICM_Init(void)
 {
     // SysConfig 已将 CS/SCL/SDA/AD0 初始化为输出
