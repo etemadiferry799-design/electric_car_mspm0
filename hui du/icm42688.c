@@ -16,6 +16,10 @@
 #define CS_PIN    DL_GPIO_PIN_13
 #define AD0_PORT  GPIOA
 #define AD0_PIN   DL_GPIO_PIN_16
+#define SCL_IOMUX ICM_SCL_SCL_IOMUX
+#define SDA_IOMUX ICM_SDA_SDA_IOMUX
+#define CS_IOMUX  ICM_CS_CS_IOMUX
+#define AD0_IOMUX ICM_AD0_AD0_IOMUX
 
 extern void delay_ms(uint32_t ms);
 static void ICM_PreparePins(uint8_t ad0High)
@@ -23,8 +27,19 @@ static uint8_t ReadRegAt(uint8_t addr, uint8_t reg)
 static void i2c_delay(void) { for (volatile int i = 0; i < 50; i++); }
 
 // SDA 方向: 直接写 DOE (不影响 IOMUX, DL_GPIO 无 setDirection API)
-static void SDA_Out(void) { SDA_PORT->DOE31_0 |=  SDA_PIN; }
-static void SDA_In(void)  { SDA_PORT->DOE31_0 &= ~SDA_PIN; }
+static void SDA_Out(void)
+{
+    DL_GPIO_initDigitalOutput(SDA_IOMUX);
+    SDA_PORT->DOE31_0 |= SDA_PIN;
+}
+
+static void SDA_In(void)
+{
+    DL_GPIO_initDigitalInputFeatures(SDA_IOMUX,
+        DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_UP,
+        DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
+    SDA_PORT->DOE31_0 &= ~SDA_PIN;
+}
 
 #define SCL_H()  DL_GPIO_setPins(SCL_PORT, SCL_PIN)
 #define SCL_L()  DL_GPIO_clearPins(SCL_PORT, SCL_PIN)
@@ -117,13 +132,26 @@ static void ReadMulti(uint8_t reg, uint8_t *buf, uint8_t len)
 }
 
 // ==================== API ====================
-uint8_t ICM_ReadWhoAmI(uint8_t ad0High)
+static void ICM_PreparePins(uint8_t ad0High)
 {
-    ICM_PreparePins(ad0High);
-    delay_ms(2);
-    return ReadRegAt(ad0High ? 0x69 : 0x68, ICM_WHO_AM_I);
-}
+    DL_GPIO_initDigitalOutput(CS_IOMUX);
+    DL_GPIO_initDigitalOutput(AD0_IOMUX);
+    DL_GPIO_initDigitalOutput(SCL_IOMUX);
+    DL_GPIO_initDigitalOutput(SDA_IOMUX);
+    CS_PORT->DOE31_0  |= CS_PIN;
+    AD0_PORT->DOE31_0 |= AD0_PIN;
+    SCL_PORT->DOE31_0 |= SCL_PIN;
+    SDA_PORT->DOE31_0 |= SDA_PIN;
 
+    DL_GPIO_setPins(CS_PORT, CS_PIN);
+    if (ad0High) {
+        DL_GPIO_setPins(AD0_PORT, AD0_PIN);
+    } else {
+        DL_GPIO_clearPins(AD0_PORT, AD0_PIN);
+    }
+    DL_GPIO_setPins(SCL_PORT, SCL_PIN);
+    DL_GPIO_setPins(SDA_PORT, SDA_PIN);
+}
 uint8_t ICM_ReadSdaLevel(void)
 {
     SDA_In();
