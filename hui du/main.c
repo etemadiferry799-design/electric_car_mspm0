@@ -62,6 +62,7 @@ int main(void)
     OLED_ShowString(24, 0, (u8 *)"ICM42688", 16);
     OLED_Refresh();
     UART_Puts("\r\n=== ICM42688 + OLED ===\r\n");
+    UART_Puts("FW: ICM_DIAG_V2\r\n");
 
     uint8_t r = ICM_Init();
     if (r) {
