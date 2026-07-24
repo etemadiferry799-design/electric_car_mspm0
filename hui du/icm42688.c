@@ -16,7 +16,8 @@
 #define AD0_PIN   ICM_AD0_AD0_PIN
 
 extern void delay_ms(uint32_t ms);
-
+static void ICM_PreparePins(uint8_t ad0High)
+static uint8_t ReadRegAt(uint8_t addr, uint8_t reg)
 static void i2c_delay(void) { for (volatile int i = 0; i < 50; i++); }
 
 // SDA 方向: 直接写 DOE (不影响 IOMUX, DL_GPIO 无 setDirection API)
