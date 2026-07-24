@@ -69,7 +69,25 @@ int main(void)
         OLED_ShowString(0, 24, (u8 *)"ERR: No ICM", 16);
         OLED_Refresh();
         OLED_Refresh();
+       
+
         UART_Puts("FAIL: ICM42688 not found\r\n");
+        UART_Puts("WHO_AM_I AD0=LOW : 0x");
+        UART_PutHex(ICM_ReadWhoAmI(0));
+        UART_Puts("\r\n");
+        UART_Puts("WHO_AM_I AD0=HIGH: 0x");
+        UART_PutHex(ICM_ReadWhoAmI(1));
+        UART_Puts("\r\n");
+        UART_Puts("GPIO levels SDA/SCL/CS/AD0: ");
+        UART_PutNum(ICM_ReadSdaLevel());
+        UART_Puts("/");
+        UART_PutNum(ICM_ReadSclLevel());
+        UART_Puts("/");
+        UART_PutNum(ICM_ReadCsLevel());
+        UART_Puts("/");
+        UART_PutNum(ICM_ReadAd0Level());
+        UART_Puts("\r\n");
+        UART_Puts("Expected ID: 0x47. If SDA voltage is 3.3V but GPIO SDA level is 0, change SDA to a free GPIO or fix pin config.\r\n");
         while (1) {
             DL_GPIO_togglePins(LED_PORT, LED_LED0_PIN);
             delay_ms(200);
