@@ -14,6 +14,8 @@
 #include "icm42688.h"
 #include "gray.h"
 
+void delay_ms(uint32_t ms);
+
 // ==================== 串口 ====================
 static void UART_Putc(char c)
 {
@@ -26,13 +28,57 @@ static void UART_PutHex(uint8_t v)
     char h = (v >> 4) & 0xF; UART_Putc(h < 10 ? '0' + h : 'A' + h - 10);
     char l = v & 0xF;        UART_Putc(l < 10 ? '0' + l : 'A' + l - 10);
 }
-static void UART_PutNum(int16_t n)
+static void UART_PutNum(int32_t n)
 {
     if (n < 0) { UART_Putc('-'); n = -n; }
     if (n == 0) { UART_Putc('0'); return; }
     char buf[8]; uint8_t i = 0;
     while (n > 0 && i < 6) { buf[i++] = '0' + (n % 10); n /= 10; }
     while (i > 0) UART_Putc(buf[--i]);
+}
+
+#define GYRO_CALIBRATION_SAMPLES 200
+
+static int16_t ClampInt16(int32_t value)
+{
+    if (value > INT16_MAX) return INT16_MAX;
+    if (value < INT16_MIN) return INT16_MIN;
+    return (int16_t)value;
+}
+
+static void CalibrateGyro(int16_t *offsetX, int16_t *offsetY, int16_t *offsetZ)
+{
+    int32_t sumX = 0, sumY = 0, sumZ = 0;
+    int16_t gx, gy, gz;
+
+    UART_Puts("Keep ICM42688 still: calibrating gyro...\r\n");
+    OLED_Clear();
+    OLED_ShowString(0, 16, (u8 *)"KEEP ICM STILL", 16);
+    OLED_ShowString(16, 32, (u8 *)"CALIBRATING", 16);
+    OLED_Refresh();
+
+    /* 丢弃刚启动时的瞬态数据。 */
+    for (uint16_t i = 0; i < 20; i++) {
+        ICM_ReadGyro(&gx, &gy, &gz);
+        delay_ms(5);
+    }
+
+    for (uint16_t i = 0; i < GYRO_CALIBRATION_SAMPLES; i++) {
+        ICM_ReadGyro(&gx, &gy, &gz);
+        sumX += gx;
+        sumY += gy;
+        sumZ += gz;
+        delay_ms(5);
+    }
+
+    *offsetX = (int16_t)(sumX / GYRO_CALIBRATION_SAMPLES);
+    *offsetY = (int16_t)(sumY / GYRO_CALIBRATION_SAMPLES);
+    *offsetZ = (int16_t)(sumZ / GYRO_CALIBRATION_SAMPLES);
+
+    UART_Puts("GYRO OFFSET: "); UART_PutNum(*offsetX);
+    UART_Puts(" "); UART_PutNum(*offsetY);
+    UART_Puts(" "); UART_PutNum(*offsetZ);
+    UART_Puts("\r\nCalibration complete\r\n");
 }
 
 // ==================== 延时 ====================
@@ -62,7 +108,7 @@ int main(void)
     OLED_ShowString(24, 0, (u8 *)"ICM42688", 16);
     OLED_Refresh();
     UART_Puts("\r\n=== ICM42688 + OLED ===\r\n");
-    UART_Puts("FW: ICM_DIAG_V2\r\n");
+    UART_Puts("FW: ICM_GYRO_CAL_V3\r\n");
 
     uint8_t r = ICM_Init();
     if (r) {
@@ -97,10 +143,16 @@ int main(void)
     UART_Puts("ICM42688 OK\r\n");
     DL_GPIO_setPins(LED_PORT, LED_LED0_PIN);
 
+    int16_t gyroOffsetX, gyroOffsetY, gyroOffsetZ;
+    CalibrateGyro(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);
+
     while (1) {
         int16_t ax, ay, az, gx, gy, gz;
         ICM_ReadAccel(&ax, &ay, &az);
         ICM_ReadGyro(&gx, &gy, &gz);
+        gx = ClampInt16((int32_t)gx - gyroOffsetX);
+        gy = ClampInt16((int32_t)gy - gyroOffsetY);
+        gz = ClampInt16((int32_t)gz - gyroOffsetZ);
 
         // 串口
         UART_Puts("A:"); UART_PutNum(ax);
