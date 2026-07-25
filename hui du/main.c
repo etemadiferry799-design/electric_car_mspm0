@@ -146,7 +146,7 @@ int main(void)
     OLED_ShowString(24, 0, (u8 *)"ICM42688", 16);
     OLED_Refresh();
     UART_Puts("\r\n=== ICM42688 + OLED ===\r\n");
-    UART_Puts("FW: GRAY_ADC_DIAG_V5\r\n");
+    UART_Puts("FW: GRAY_ADC_DIAG_V6\r\n");
 
     uint8_t r = ICM_Init();
     if (r) {
@@ -207,6 +207,13 @@ int main(void)
 
         Gray_ReadAll(grayValues);
         UART_PrintGray(grayValues);
+        UART_Puts("GRAY_ADDR_DOE/OUT: ");
+        UART_PutNum((GPIOA->DOE31_0 >> 0) & 0x07U);
+        UART_Puts("/");
+        UART_PutNum((GPIOA->DOUT31_0 >> 0) & 0x07U);
+        UART_Puts("  PA27_mV_approx: ");
+        UART_PutNum(((int32_t)grayValues[7] * 3300) / 4095);
+        UART_Puts("\r\n");
         if (g_grayAdcTimeoutCount != timeoutCountBeforeRead) {
             UART_Puts("ADC_TIMEOUT: PA27 conversion did not finish\r\n");
         }
