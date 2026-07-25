@@ -39,6 +39,8 @@ static void UART_PutNum(int32_t n)
 
 #define GYRO_CALIBRATION_SAMPLES 200
 
+static volatile uint32_t g_grayAdcTimeoutCount = 0U;
+
 static int16_t ClampInt16(int32_t value)
 {
     if (value > INT16_MAX) return INT16_MAX;
@@ -85,6 +87,8 @@ static uint16_t ReadGrayAdc(void)
 {
     uint32_t timeout = 100000U;
 
+    /* 单次转换前显式使能；避免不同 SysConfig 电源模式下 ADC 尚未使能。 */
+    DL_ADC12_enableConversions(GRAY_ADC_INST);
     DL_ADC12_clearInterruptStatus(
         GRAY_ADC_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
     DL_ADC12_startConversion(GRAY_ADC_INST);
@@ -96,13 +100,12 @@ static uint16_t ReadGrayAdc(void)
     }
 
     if (timeout == 0U) {
-        DL_ADC12_enableConversions(GRAY_ADC_INST);
+        g_grayAdcTimeoutCount++;
         return 0U;
     }
 
     uint16_t result = DL_ADC12_getMemResult(
         GRAY_ADC_INST, GRAY_ADC_ADCMEM_GRAY_ADC_MEM);
-    DL_ADC12_enableConversions(GRAY_ADC_INST);
     return result;
 }
 
@@ -143,7 +146,7 @@ int main(void)
     OLED_ShowString(24, 0, (u8 *)"ICM42688", 16);
     OLED_Refresh();
     UART_Puts("\r\n=== ICM42688 + OLED ===\r\n");
-    UART_Puts("FW: GRAY_ADC_TEST_V4\r\n");
+    UART_Puts("FW: GRAY_ADC_DIAG_V5\r\n");
 
     uint8_t r = ICM_Init();
     if (r) {
@@ -186,6 +189,7 @@ int main(void)
     while (1) {
         int16_t ax, ay, az, gx, gy, gz;
         uint16_t grayValues[GRAY_CHANNEL_COUNT];
+        uint32_t timeoutCountBeforeRead = g_grayAdcTimeoutCount;
         ICM_ReadAccel(&ax, &ay, &az);
         ICM_ReadGyro(&gx, &gy, &gz);
         gx = ClampInt16((int32_t)gx - gyroOffsetX);
@@ -203,6 +207,9 @@ int main(void)
 
         Gray_ReadAll(grayValues);
         UART_PrintGray(grayValues);
+        if (g_grayAdcTimeoutCount != timeoutCountBeforeRead) {
+            UART_Puts("ADC_TIMEOUT: PA27 conversion did not finish\r\n");
+        }
 
         // LED: 倾斜检测
         if (ax > 500 || ax < -500 || ay > 500 || ay < -500)

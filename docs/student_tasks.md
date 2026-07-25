@@ -150,8 +150,10 @@ uint16_t gray[GRAY_CHANNEL_COUNT];
 Gray_ReadAll(gray);
 ```
 
-烧录后应先看到 `FW: GRAY_ADC_TEST_V4` 和 `GRAY ADC ready: PA27, 8 channels`，
+烧录后应先看到 `FW: GRAY_ADC_DIAG_V5` 和 `GRAY ADC ready: PA27, 8 channels`，
 随后每轮看到 `GRAY: ch0 ch1 ch2 ch3 ch4 ch5 ch6 ch7`。
+如果紧接着出现 `ADC_TIMEOUT`，说明 ADC 转换未完成；如果没有超时但 8 路始终为
+0，则应测量灰度模块 `OUT` 对 GND 的电压并检查模块供电、共地和 PA27 接线。
 
 ## 任务 9：记录黑白数值
 
