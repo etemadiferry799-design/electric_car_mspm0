@@ -6,14 +6,16 @@
 //   ICM_SDA_PORT=GPIOA, ICM_SDA_SDA_PIN=DL_GPIO_PIN_14
 //   ICM_AD0_PORT=GPIOA, ICM_AD0_AD0_PIN=DL_GPIO_PIN_16
 
-#define SCL_PORT  ICM_SCL_PORT
-#define SCL_PIN   ICM_SCL_SCL_PIN
-#define SDA_PORT  ICM_SDA_PORT
-#define SDA_PIN   ICM_SDA_SDA_PIN
-#define CS_PORT   ICM_CS_PORT
-#define CS_PIN    ICM_CS_CS_PIN
-#define AD0_PORT  ICM_AD0_PORT
-#define AD0_PIN   ICM_AD0_AD0_PIN
+// 直接使用 PA13/PA14/PA15/PA16，避免 SysConfig 生成的 *_PIN 宏在不同版本中
+// 出现“引脚编号”和“位掩码”差异，导致 set/read 操作读写错位。
+#define SCL_PORT  GPIOA
+#define SCL_PIN   DL_GPIO_PIN_15
+#define SDA_PORT  GPIOA
+#define SDA_PIN   DL_GPIO_PIN_14
+#define CS_PORT   GPIOA
+#define CS_PIN    DL_GPIO_PIN_13
+#define AD0_PORT  GPIOA
+#define AD0_PIN   DL_GPIO_PIN_16
 
 extern void delay_ms(uint32_t ms);
 
