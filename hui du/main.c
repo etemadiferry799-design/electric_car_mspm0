@@ -87,8 +87,10 @@ static uint16_t ReadGrayAdc(void)
 {
     uint32_t timeout = 100000U;
 
-    /* 单次转换前显式使能；避免不同 SysConfig 电源模式下 ADC 尚未使能。 */
-    DL_ADC12_enableConversions(GRAY_ADC_INST);
+    /*
+     * Follow TI's single-conversion example sequence: SysConfig enables ENC
+     * initially; start, wait, read, and then re-enable ENC for the next read.
+     */
     DL_ADC12_clearInterruptStatus(
         GRAY_ADC_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
     DL_ADC12_startConversion(GRAY_ADC_INST);
@@ -101,11 +103,13 @@ static uint16_t ReadGrayAdc(void)
 
     if (timeout == 0U) {
         g_grayAdcTimeoutCount++;
+        DL_ADC12_enableConversions(GRAY_ADC_INST);
         return 0U;
     }
 
     uint16_t result = DL_ADC12_getMemResult(
         GRAY_ADC_INST, GRAY_ADC_ADCMEM_GRAY_ADC_MEM);
+    DL_ADC12_enableConversions(GRAY_ADC_INST);
     return result;
 }
 
@@ -146,7 +150,7 @@ int main(void)
     OLED_ShowString(24, 0, (u8 *)"ICM42688", 16);
     OLED_Refresh();
     UART_Puts("\r\n=== ICM42688 + OLED ===\r\n");
-    UART_Puts("FW: GRAY_ADC_DIAG_V6\r\n");
+    UART_Puts("FW: GRAY_ADC_DIAG_V7\r\n");
 
     uint8_t r = ICM_Init();
     if (r) {
@@ -185,6 +189,9 @@ int main(void)
     CalibrateGyro(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);
     Gray_Init(ReadGrayAdc);
     UART_Puts("GRAY ADC ready: PA27, 8 channels\r\n");
+    UART_Puts("ADC peripheral power: ");
+    UART_PutNum(DL_ADC12_isPowerEnabled(GRAY_ADC_INST) ? 1 : 0);
+    UART_Puts("\r\n");
 
     while (1) {
         int16_t ax, ay, az, gx, gy, gz;
