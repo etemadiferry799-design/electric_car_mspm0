@@ -26,22 +26,12 @@ const UART1   = UART.addInstance();     // PRINT
 const ADC12   = scripting.addModule("/ti/driverlib/ADC12", {}, false);
 const ADC121  = ADC12.addInstance();    // GRAY_ADC
 
-/* ========== 时钟 ========== */
-const divider6       = system.clockTree["PLL_CLK2X_DIV"];
-divider6.divideValue = 4;
-const divider7       = system.clockTree["PLL_PDIV"];
-divider7.divideValue = 2;
-const divider9       = system.clockTree["UDIV"];
-divider9.divideValue = 2;
+/* ========== 时钟：bringup 阶段保持默认 SYSOSC，不切换到 PLL ========== */
 const gate7  = system.clockTree["MFCLKGATE"];
 gate7.enable = true;
-const multiplier2         = system.clockTree["PLL_QDIV"];
-multiplier2.multiplyValue = 10;
-const mux8       = system.clockTree["HSCLKMUX"];
-mux8.inputSelect = "HSCLKMUX_SYSPLL2X";
 
 SYSCTL.forceDefaultClkConfig = true;
-SYSCTL.clockTreeEn           = true;
+SYSCTL.clockTreeEn           = false;
 
 const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
 
