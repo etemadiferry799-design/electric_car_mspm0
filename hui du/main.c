@@ -81,6 +81,41 @@ static void CalibrateGyro(int16_t *offsetX, int16_t *offsetY, int16_t *offsetZ)
     UART_Puts("\r\nCalibration complete\r\n");
 }
 
+static uint16_t ReadGrayAdc(void)
+{
+    uint32_t timeout = 100000U;
+
+    DL_ADC12_clearInterruptStatus(
+        GRAY_ADC_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED);
+    DL_ADC12_startConversion(GRAY_ADC_INST);
+
+    while ((DL_ADC12_getRawInterruptStatus(
+                GRAY_ADC_INST, DL_ADC12_INTERRUPT_MEM0_RESULT_LOADED) == 0U) &&
+           (timeout > 0U)) {
+        timeout--;
+    }
+
+    if (timeout == 0U) {
+        DL_ADC12_enableConversions(GRAY_ADC_INST);
+        return 0U;
+    }
+
+    uint16_t result = DL_ADC12_getMemResult(
+        GRAY_ADC_INST, GRAY_ADC_ADCMEM_GRAY_ADC_MEM);
+    DL_ADC12_enableConversions(GRAY_ADC_INST);
+    return result;
+}
+
+static void UART_PrintGray(const uint16_t values[GRAY_CHANNEL_COUNT])
+{
+    UART_Puts("GRAY:");
+    for (uint8_t i = 0U; i < GRAY_CHANNEL_COUNT; i++) {
+        UART_Puts(" ");
+        UART_PutNum(values[i]);
+    }
+    UART_Puts("\r\n");
+}
+
 // ==================== 延时 ====================
 void delay_ms(uint32_t ms)
 {
@@ -108,7 +143,7 @@ int main(void)
     OLED_ShowString(24, 0, (u8 *)"ICM42688", 16);
     OLED_Refresh();
     UART_Puts("\r\n=== ICM42688 + OLED ===\r\n");
-    UART_Puts("FW: ICM_GYRO_CAL_V3\r\n");
+    UART_Puts("FW: GRAY_ADC_TEST_V4\r\n");
 
     uint8_t r = ICM_Init();
     if (r) {
@@ -145,9 +180,12 @@ int main(void)
 
     int16_t gyroOffsetX, gyroOffsetY, gyroOffsetZ;
     CalibrateGyro(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);
+    Gray_Init(ReadGrayAdc);
+    UART_Puts("GRAY ADC ready: PA27, 8 channels\r\n");
 
     while (1) {
         int16_t ax, ay, az, gx, gy, gz;
+        uint16_t grayValues[GRAY_CHANNEL_COUNT];
         ICM_ReadAccel(&ax, &ay, &az);
         ICM_ReadGyro(&gx, &gy, &gz);
         gx = ClampInt16((int32_t)gx - gyroOffsetX);
@@ -162,6 +200,9 @@ int main(void)
         UART_Puts(" ");   UART_PutNum(gy);
         UART_Puts(" ");   UART_PutNum(gz);
         UART_Puts("\r\n");
+
+        Gray_ReadAll(grayValues);
+        UART_PrintGray(grayValues);
 
         // LED: 倾斜检测
         if (ax > 500 || ax < -500 || ay > 500 || ay < -500)

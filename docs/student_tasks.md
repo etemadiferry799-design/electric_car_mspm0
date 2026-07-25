@@ -129,14 +129,12 @@
 
 ## 任务 8：把 ADC 读取函数接给灰度驱动
 
-`gray.c` 已经负责选择 8 路通道，但它不知道你的 ADC 函数叫什么。你需要在 `main.c` 里写一个函数，例如：
+`gray.c` 已经负责选择 8 路通道。当前工程已使用 SysConfig 生成的
+`GRAY_ADC_INST` 和 `GRAY_ADC_ADCMEM_GRAY_ADC_MEM` 宏实现 PA27 单次采样，
+并在每轮主循环打印 `GRAY:` 后面的 8 路原始值。
 
 ```c
-static uint16_t ReadGrayAdc(void)
-{
-    // TODO: 在这里调用 SysConfig 生成的 ADC 单次采样函数，返回 PA27 的 ADC 值。
-    return 0;
-}
+static uint16_t ReadGrayAdc(void); // 实现见 main.c
 ```
 
 然后初始化：
@@ -152,7 +150,8 @@ uint16_t gray[GRAY_CHANNEL_COUNT];
 Gray_ReadAll(gray);
 ```
 
-如果你把 SysConfig 生成的 `ti_msp_dl_config.h` 里 ADC 相关宏发给我，我可以直接帮你把 `ReadGrayAdc()` 补完整。
+烧录后应先看到 `FW: GRAY_ADC_TEST_V4` 和 `GRAY ADC ready: PA27, 8 channels`，
+随后每轮看到 `GRAY: ch0 ch1 ch2 ch3 ch4 ch5 ch6 ch7`。
 
 ## 任务 9：记录黑白数值
 
