@@ -16,14 +16,30 @@
 #define CS_PIN    DL_GPIO_PIN_13
 #define AD0_PORT  GPIOA
 #define AD0_PIN   DL_GPIO_PIN_16
+#define SCL_IOMUX ICM_SCL_SCL_IOMUX
+#define SDA_IOMUX ICM_SDA_SDA_IOMUX
+#define CS_IOMUX  ICM_CS_CS_IOMUX
+#define AD0_IOMUX ICM_AD0_AD0_IOMUX
 
 extern void delay_ms(uint32_t ms);
 
 static void i2c_delay(void) { for (volatile int i = 0; i < 50; i++); }
 
-// SDA 方向: 直接写 DOE (不影响 IOMUX, DL_GPIO 无 setDirection API)
-static void SDA_Out(void) { SDA_PORT->DOE31_0 |=  SDA_PIN; }
-static void SDA_In(void)  { SDA_PORT->DOE31_0 &= ~SDA_PIN; }
+// SDA 是双向线，切换到输入时必须重新配置 IOMUX 输入和上拉；
+// 只清 DOE 在部分 MSPM0/SysConfig 组合下会导致 DL_GPIO_readPins() 一直读 0。
+static void SDA_Out(void)
+{
+    DL_GPIO_initDigitalOutput(SDA_IOMUX);
+    SDA_PORT->DOE31_0 |= SDA_PIN;
+}
+
+static void SDA_In(void)
+{
+    DL_GPIO_initDigitalInputFeatures(SDA_IOMUX,
+        DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_UP,
+        DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
+    SDA_PORT->DOE31_0 &= ~SDA_PIN;
+}
 
 #define SCL_H()  DL_GPIO_setPins(SCL_PORT, SCL_PIN)
 #define SCL_L()  DL_GPIO_clearPins(SCL_PORT, SCL_PIN)
@@ -84,6 +100,15 @@ static uint8_t I2C_Read(uint8_t ack)
 // ==================== I2C 读写寄存器 ====================
 static void ICM_PreparePins(uint8_t ad0High)
 {
+    DL_GPIO_initDigitalOutput(CS_IOMUX);
+    DL_GPIO_initDigitalOutput(AD0_IOMUX);
+    DL_GPIO_initDigitalOutput(SCL_IOMUX);
+    DL_GPIO_initDigitalOutput(SDA_IOMUX);
+    CS_PORT->DOE31_0  |= CS_PIN;
+    AD0_PORT->DOE31_0 |= AD0_PIN;
+    SCL_PORT->DOE31_0 |= SCL_PIN;
+    SDA_PORT->DOE31_0 |= SDA_PIN;
+
     DL_GPIO_setPins(CS_PORT, CS_PIN);        // CS=HIGH  → I2C
     if (ad0High) {
         DL_GPIO_setPins(AD0_PORT, AD0_PIN);  // AD0=HIGH → 0x69
@@ -154,17 +179,17 @@ uint8_t ICM_ReadSdaLevel(void)
 
 uint8_t ICM_ReadSclLevel(void)
 {
-    return DL_GPIO_readPins(SCL_PORT, SCL_PIN) ? 1 : 0;
+    return (SCL_PORT->DOUT31_0 & SCL_PIN) ? 1 : 0;
 }
 
 uint8_t ICM_ReadCsLevel(void)
 {
-    return DL_GPIO_readPins(CS_PORT, CS_PIN) ? 1 : 0;
+    return (CS_PORT->DOUT31_0 & CS_PIN) ? 1 : 0;
 }
 
 uint8_t ICM_ReadAd0Level(void)
 {
-    return DL_GPIO_readPins(AD0_PORT, AD0_PIN) ? 1 : 0;
+    return (AD0_PORT->DOUT31_0 & AD0_PIN) ? 1 : 0;
 }
 
 uint8_t ICM_Init(void)
