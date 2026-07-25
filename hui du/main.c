@@ -41,29 +41,6 @@ static void UART_PutNum(int32_t n)
 
 static volatile uint32_t g_grayAdcTimeoutCount = 0U;
 
-/*
- * Do not rely only on the generated pinmux initialization.  PA27 is ADC0
- * channel 0 on this project, so configure both the analog pad and MEM0 here.
- * This also makes the firmware recover when an older generated
- * ti_msp_dl_config.c did not apply the PA27 analog function.
- */
-static void GrayAdc_Init(void)
-{
-    DL_ADC12_disableConversions(GRAY_ADC_INST);
-    DL_GPIO_initPeripheralAnalogFunction(GPIO_GRAY_ADC_IOMUX_C0);
-    DL_ADC12_configConversionMem(
-        GRAY_ADC_INST,
-        GRAY_ADC_ADCMEM_GRAY_ADC_MEM,
-        DL_ADC12_INPUT_CHAN_0,
-        DL_ADC12_REFERENCE_VOLTAGE_VDDA,
-        DL_ADC12_SAMPLE_TIMER_SOURCE_SCOMP0,
-        DL_ADC12_AVERAGING_MODE_DISABLED,
-        DL_ADC12_BURN_OUT_SOURCE_DISABLED,
-        DL_ADC12_TRIGGER_MODE_AUTO_NEXT,
-        DL_ADC12_WINDOWS_COMP_MODE_DISABLED);
-    DL_ADC12_enableConversions(GRAY_ADC_INST);
-}
-
 static int16_t ClampInt16(int32_t value)
 {
     if (value > INT16_MAX) return INT16_MAX;
@@ -173,12 +150,11 @@ int main(void)
     OLED_ShowString(24, 0, (u8 *)"ICM42688", 16);
     OLED_Refresh();
     UART_Puts("\r\n=== ICM42688 + OLED ===\r\n");
-    UART_Puts("FW: GRAY_ADC_PINMUX_FIX_V8\r\n");
+    UART_Puts("FW: SENSOR_BRINGUP_SAFE_V9\r\n");
 
     uint8_t r = ICM_Init();
     if (r) {
         OLED_ShowString(0, 24, (u8 *)"ERR: No ICM", 16);
-        OLED_Refresh();
         OLED_Refresh();
         UART_Puts("FAIL: ICM42688 not found\r\n");
         UART_Puts("WHO_AM_I AD0=LOW : 0x");
@@ -210,7 +186,7 @@ int main(void)
 
     int16_t gyroOffsetX, gyroOffsetY, gyroOffsetZ;
     CalibrateGyro(&gyroOffsetX, &gyroOffsetY, &gyroOffsetZ);
-    GrayAdc_Init();
+    /* PA27 analog pinmux and ADC MEM0 are configured only by SysConfig. */
     Gray_Init(ReadGrayAdc);
     UART_Puts("GRAY ADC ready: PA27, 8 channels\r\n");
     UART_Puts("ADC peripheral power: ");

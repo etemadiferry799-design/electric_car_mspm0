@@ -36,3 +36,7 @@ bringup 工程不需要 PLL 性能。为减少错误时钟树导致 CPU 启动�
 SWD TCLK 也降为 100 kHz，优先保证恢复连接的可靠性。用户必须先恢复
 `Connect Target`，才能重新生成、编译和下载这份配置；修改电脑端源码本身不能
 解除已经运行在芯片中的旧固件。
+
+应用代码也不再二次调用底层 IOMUX/ADC conversion-memory 配置 API。PA27 的
+模拟引脚复用与 ADC0 MEM0 统一由 `empty.syscfg` 生成，避免 SysConfig 初始化后
+再次修改外设状态。安全版固件横幅为 `SENSOR_BRINGUP_SAFE_V9`。
